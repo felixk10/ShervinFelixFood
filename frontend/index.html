@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🍔 Felix vs Shervin — Food Tracker</title>
+  <meta name="description" content="Wer gibt weniger für Essen aus? Felix vs Shervin – Juli 2026" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-glow"></div>
+      <h1>🍔 Food Tracker</h1>
+      <p class="subtitle">Felix vs Shervin · Juli 2026</p>
+    </header>
+
+    <!-- Scoreboard -->
+    <section class="scoreboard" id="scoreboard">
+      <div class="score-card felix" id="card-felix">
+        <div class="score-avatar">🧑‍💻</div>
+        <h2>Felix</h2>
+        <div class="score-amount" id="total-felix">0,00 €</div>
+        <div class="score-days" id="days-felix">0 Tage</div>
+      </div>
+
+      <div class="vs-badge" id="vs-badge">
+        <div class="vs-text">VS</div>
+        <div class="vs-diff" id="vs-diff"></div>
+      </div>
+
+      <div class="score-card shervin" id="card-shervin">
+        <div class="score-avatar">😎</div>
+        <h2>Shervin</h2>
+        <div class="score-amount" id="total-shervin">0,00 €</div>
+        <div class="score-days" id="days-shervin">0 Tage</div>
+      </div>
+    </section>
+
+    <!-- Leader banner -->
+    <div class="leader-banner" id="leader-banner">
+      <span id="leader-text">Noch keine Daten</span>
+    </div>
+
+    <!-- Add expense form -->
+    <section class="add-section">
+      <h3>✏️ Ausgabe eintragen</h3>
+      <form id="expense-form" class="expense-form">
+        <div class="form-row">
+          <div class="person-toggle" id="person-toggle">
+            <button type="button" class="person-btn active" data-person="Felix">🧑‍💻 Felix</button>
+            <button type="button" class="person-btn" data-person="Shervin">😎 Shervin</button>
+          </div>
+        </div>
+        <div class="form-row two-col">
+          <div class="input-group">
+            <label for="expense-date">Datum</label>
+            <input type="date" id="expense-date" required />
+          </div>
+          <div class="input-group">
+            <label for="expense-amount">Betrag (€)</label>
+            <input type="number" id="expense-amount" step="0.01" min="0" placeholder="z.B. 8.50" required />
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="submit-btn">
+          <span>💾 Eintragen</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- Recent entries -->
+    <section class="entries-section">
+      <h3>📋 Letzte Einträge</h3>
+      <div class="entries-list" id="entries-list">
+        <div class="empty-state">Noch keine Einträge vorhanden</div>
+      </div>
+    </section>
+
+    <!-- Daily breakdown -->
+    <section class="breakdown-section">
+      <h3>📊 Tagesübersicht</h3>
+      <div class="breakdown-table-wrap">
+        <table class="breakdown-table" id="breakdown-table">
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Felix</th>
+              <th>Shervin</th>
+              <th>👑</th>
+            </tr>
+          </thead>
+          <tbody id="breakdown-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Made with ❤️ for less spending · Juli 2026</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
