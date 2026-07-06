@@ -266,7 +266,19 @@ function showToast(message, type = 'success') {
 
   clearTimeout(toastTimeout);
   toast.className = 'toast';
-  toast.textContent = message;
+
+  const icon = type === 'success' ? '✅' : '⚠️';
+
+  toast.innerHTML = `
+    <div class="toast-content">
+      <span class="toast-icon">${icon}</span>
+      <span class="toast-message">${message}</span>
+      <button class="toast-close" onclick="this.closest('.toast').classList.remove('show')">✕</button>
+    </div>
+    <div class="toast-progress">
+      <div class="toast-progress-bar"></div>
+    </div>
+  `;
 
   // Trigger reflow for re-animation
   void toast.offsetHeight;
@@ -275,5 +287,5 @@ function showToast(message, type = 'success') {
 
   toastTimeout = setTimeout(() => {
     toast.classList.remove('show');
-  }, 2500);
+  }, 3000);
 }
