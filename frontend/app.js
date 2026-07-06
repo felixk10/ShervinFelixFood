@@ -234,10 +234,17 @@ function renderBreakdown(expenses) {
 // ===== HELPERS =====
 
 function formatEuro(amount) {
-  return amount.toLocaleString('de-DE', {
-    style: 'currency',
-    currency: 'EUR'
-  });
+  const num = parseFloat(amount);
+  let str;
+  if (num % 1 === 0) {
+    // Whole number: 9€
+    str = num.toString();
+  } else {
+    // Has decimals: remove trailing zeros (9,50 → 9,5)
+    str = num.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    str = str.replace('.', ',');
+  }
+  return str + '€';
 }
 
 function formatDate(dateStr) {
