@@ -198,8 +198,9 @@ function renderBreakdown(expenses) {
   // Group by date
   const byDate = {};
   for (const e of expenses) {
-    if (!byDate[e.date]) byDate[e.date] = { Felix: 0, Shervin: 0 };
-    byDate[e.date][e.person] += e.amount;
+    const dateKey = typeof e.date === 'string' ? e.date.split('T')[0] : new Date(e.date).toISOString().split('T')[0];
+    if (!byDate[dateKey]) byDate[dateKey] = { Felix: 0, Shervin: 0 };
+    byDate[dateKey][e.person] += parseFloat(e.amount);
   }
 
   const dates = Object.keys(byDate).sort();
@@ -240,7 +241,11 @@ function formatEuro(amount) {
 }
 
 function formatDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
+  // Handle both "2026-07-06" and "2026-07-06T00:00:00.000Z" formats
+  const str = typeof dateStr === 'string' ? dateStr : new Date(dateStr).toISOString();
+  const dateOnly = str.split('T')[0];
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
   return d.toLocaleDateString('de-DE', {
     weekday: 'short',
     day: '2-digit',
