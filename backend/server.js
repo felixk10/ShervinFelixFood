@@ -4,8 +4,11 @@ dns.setDefaultResultOrder('ipv4first');
 
 const express = require('express');
 const cors = require('cors');
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const path = require('path');
+
+// Return DATE column as plain 'YYYY-MM-DD' string instead of JS Date object (prevents timezone shifts)
+types.setTypeParser(1082, val => val);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -105,7 +108,8 @@ app.get('/api/summary', async (req, res) => {
 
     for (const e of expenses) {
       summary[e.person].total += parseFloat(e.amount);
-      summary[e.person].days.add(e.date.toISOString().split('T')[0]);
+      const dateStr = typeof e.date === 'string' ? e.date.split('T')[0] : new Date(e.date).toISOString().split('T')[0];
+      summary[e.person].days.add(dateStr);
     }
 
     const felixTotal = Math.round(summary.Felix.total * 100) / 100;

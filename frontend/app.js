@@ -197,11 +197,15 @@ function renderEntries(expenses) {
     return;
   }
 
-  // Sort by date descending, then by createdAt descending
+  // Sort by date descending, then by created_at descending
   const sorted = [...expenses].sort((a, b) => {
-    const dateDiff = b.date.localeCompare(a.date);
+    const strA = typeof a.date === 'string' ? a.date.split('T')[0] : (a.date ? new Date(a.date).toISOString().split('T')[0] : '');
+    const strB = typeof b.date === 'string' ? b.date.split('T')[0] : (b.date ? new Date(b.date).toISOString().split('T')[0] : '');
+    const dateDiff = strB.localeCompare(strA);
     if (dateDiff !== 0) return dateDiff;
-    return (b.createdAt || '').localeCompare(a.createdAt || '');
+    const createdA = a.created_at || a.createdAt || '';
+    const createdB = b.created_at || b.createdAt || '';
+    return String(createdB).localeCompare(String(createdA));
   });
 
   entriesList.innerHTML = sorted.map(entry => {
@@ -227,9 +231,11 @@ function renderBreakdown(expenses) {
   // Group by date
   const byDate = {};
   for (const e of expenses) {
+    if (!e.date) continue;
     const dateKey = typeof e.date === 'string' ? e.date.split('T')[0] : new Date(e.date).toISOString().split('T')[0];
+    if (!dateKey || dateKey === 'Invalid Date') continue;
     if (!byDate[dateKey]) byDate[dateKey] = { Felix: 0, Shervin: 0 };
-    byDate[dateKey][e.person] += parseFloat(e.amount);
+    byDate[dateKey][e.person] += parseFloat(e.amount || 0);
   }
 
   const dates = Object.keys(byDate).sort();
@@ -263,7 +269,7 @@ function renderBreakdown(expenses) {
 // ===== HELPERS =====
 
 function formatEuro(amount) {
-  const num = parseFloat(amount);
+  const num = parseFloat(amount || 0);
   let str;
   if (num % 1 === 0) {
     // Whole number: 9€
@@ -276,17 +282,29 @@ function formatEuro(amount) {
   return str + '€';
 }
 
-function formatDate(dateStr) {
-  // Handle both "2026-07-06" and "2026-07-06T00:00:00.000Z" formats
-  const str = typeof dateStr === 'string' ? dateStr : new Date(dateStr).toISOString();
-  const dateOnly = str.split('T')[0];
-  const [year, month, day] = dateOnly.split('-').map(Number);
-  const d = new Date(year, month - 1, day);
-  return d.toLocaleDateString('de-DE', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit'
-  });
+function formatDate(dateVal) {
+  if (!dateVal) return '—';
+  try {
+    const str = typeof dateVal === 'string' ? dateVal : new Date(dateVal).toISOString();
+    const dateOnly = str.split('T')[0];
+    const parts = dateOnly.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        const d = new Date(year, month, day);
+        return d.toLocaleDateString('de-DE', {
+          weekday: 'short',
+          day: '2-digit',
+          month: '2-digit'
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error formatting date:', dateVal, err);
+  }
+  return String(dateVal);
 }
 
 // ===== TOAST =====
