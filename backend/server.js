@@ -1,3 +1,7 @@
+const net = require('net');
+// Force IPv4 — Render uses IPv6 by default, Supabase needs IPv4
+if (net.setDefaultAutoSelectFamily) net.setDefaultAutoSelectFamily(false);
+
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
