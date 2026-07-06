@@ -109,16 +109,45 @@ async function handleSubmit(e) {
   }
 }
 
+// Custom confirm dialog
+function showConfirm() {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('confirm-overlay');
+    const cancelBtn = document.getElementById('confirm-cancel');
+    const deleteBtn = document.getElementById('confirm-delete');
+
+    overlay.classList.add('show');
+
+    function cleanup() {
+      overlay.classList.remove('show');
+      cancelBtn.removeEventListener('click', onCancel);
+      deleteBtn.removeEventListener('click', onDelete);
+      overlay.removeEventListener('click', onOverlay);
+    }
+
+    function onCancel() { cleanup(); resolve(false); }
+    function onDelete() { cleanup(); resolve(true); }
+    function onOverlay(e) {
+      if (e.target === overlay) { cleanup(); resolve(false); }
+    }
+
+    cancelBtn.addEventListener('click', onCancel);
+    deleteBtn.addEventListener('click', onDelete);
+    overlay.addEventListener('click', onOverlay);
+  });
+}
+
 async function deleteExpense(id) {
-  if (!confirm('Eintrag wirklich löschen?')) return;
+  const confirmed = await showConfirm();
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`${API_BASE}/expenses/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Löschen fehlgeschlagen');
-    showToast('🗑️ Eintrag gelöscht', 'success');
+    showToast('Eintrag gelöscht', 'success');
     await loadData();
   } catch (err) {
-    showToast(`❌ ${err.message}`, 'error');
+    showToast(`${err.message}`, 'error');
   }
 }
 
