@@ -1,6 +1,6 @@
-const net = require('net');
-// Force IPv4 — Render uses IPv6 by default, Supabase needs IPv4
-if (net.setDefaultAutoSelectFamily) net.setDefaultAutoSelectFamily(false);
+const dns = require('dns');
+// Force IPv4 DNS resolution — Render free tier blocks IPv6 outbound
+dns.setDefaultResultOrder('ipv4first');
 
 const express = require('express');
 const cors = require('cors');
