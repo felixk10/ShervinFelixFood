@@ -1,140 +1,141 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
+const { Pool } = require('pg');
 const path = require('path');
-const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const DATA_FILE = path.join(__dirname, 'data', 'expenses.json');
+
+// --- Database ---
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+// Auto-create table if it doesn't exist
+async function initDB() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      person TEXT NOT NULL CHECK (person IN ('Felix', 'Shervin')),
+      date DATE NOT NULL,
+      amount NUMERIC(10, 2) NOT NULL CHECK (amount >= 0),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  console.log('✅ Datenbank bereit');
+}
 
 app.use(cors());
 app.use(express.json());
 
-// Serve frontend static files from ../frontend
+// Serve frontend
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
-
-// --- Data helpers ---
-
-function ensureDataFile() {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ expenses: [] }, null, 2));
-  }
-}
-
-function readData() {
-  ensureDataFile();
-  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-}
-
-function writeData(data) {
-  ensureDataFile();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
 
 // --- API Routes ---
 
 // Get all expenses
-app.get('/api/expenses', (req, res) => {
-  const data = readData();
-  res.json(data.expenses);
+app.get('/api/expenses', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM expenses ORDER BY date DESC, created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Datenbankfehler' });
+  }
 });
 
-// Add an expense
-app.post('/api/expenses', (req, res) => {
+// Add expense
+app.post('/api/expenses', async (req, res) => {
   const { person, date, amount } = req.body;
 
   if (!person || !date || amount === undefined) {
     return res.status(400).json({ error: 'person, date und amount sind Pflichtfelder.' });
   }
-
   if (!['Felix', 'Shervin'].includes(person)) {
     return res.status(400).json({ error: 'Person muss Felix oder Shervin sein.' });
   }
-
   if (typeof amount !== 'number' || amount < 0) {
     return res.status(400).json({ error: 'amount muss eine positive Zahl sein.' });
   }
 
-  const data = readData();
-
-  const entry = {
-    id: crypto.randomUUID(),
-    person,
-    date,
-    amount: Math.round(amount * 100) / 100,
-    createdAt: new Date().toISOString()
-  };
-
-  data.expenses.push(entry);
-  writeData(data);
-
-  res.status(201).json(entry);
+  try {
+    const result = await pool.query(
+      'INSERT INTO expenses (person, date, amount) VALUES ($1, $2, $3) RETURNING *',
+      [person, date, Math.round(amount * 100) / 100]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Datenbankfehler' });
+  }
 });
 
-// Delete an expense
-app.delete('/api/expenses/:id', (req, res) => {
-  const data = readData();
-  const idx = data.expenses.findIndex(e => e.id === req.params.id);
-
-  if (idx === -1) {
-    return res.status(404).json({ error: 'Eintrag nicht gefunden.' });
+// Delete expense
+app.delete('/api/expenses/:id', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM expenses WHERE id = $1 RETURNING *',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Eintrag nicht gefunden.' });
+    }
+    res.json({ deleted: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Datenbankfehler' });
   }
-
-  const removed = data.expenses.splice(idx, 1)[0];
-  writeData(data);
-
-  res.json({ deleted: removed });
 });
 
-// Get summary
-app.get('/api/summary', (req, res) => {
-  const data = readData();
-  const expenses = data.expenses;
+// Summary
+app.get('/api/summary', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM expenses');
+    const expenses = result.rows;
 
-  const summary = {
-    Felix: { total: 0, days: 0, entries: [] },
-    Shervin: { total: 0, days: 0, entries: [] }
-  };
+    const summary = {
+      Felix: { total: 0, days: new Set() },
+      Shervin: { total: 0, days: new Set() }
+    };
 
-  const daysSeen = { Felix: new Set(), Shervin: new Set() };
+    for (const e of expenses) {
+      summary[e.person].total += parseFloat(e.amount);
+      summary[e.person].days.add(e.date.toISOString().split('T')[0]);
+    }
 
-  for (const e of expenses) {
-    summary[e.person].total += e.amount;
-    daysSeen[e.person].add(e.date);
-    summary[e.person].entries.push(e);
+    const felixTotal = Math.round(summary.Felix.total * 100) / 100;
+    const shervinTotal = Math.round(summary.Shervin.total * 100) / 100;
+    const diff = Math.abs(felixTotal - shervinTotal);
+
+    let leader;
+    if (felixTotal < shervinTotal) leader = 'Felix';
+    else if (shervinTotal < felixTotal) leader = 'Shervin';
+    else leader = 'Gleichstand';
+
+    res.json({
+      Felix: { total: felixTotal, days: summary.Felix.days.size },
+      Shervin: { total: shervinTotal, days: summary.Shervin.days.size },
+      leader,
+      difference: Math.round(diff * 100) / 100
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Datenbankfehler' });
   }
-
-  summary.Felix.total = Math.round(summary.Felix.total * 100) / 100;
-  summary.Shervin.total = Math.round(summary.Shervin.total * 100) / 100;
-  summary.Felix.days = daysSeen.Felix.size;
-  summary.Shervin.days = daysSeen.Shervin.size;
-
-  const diff = Math.abs(summary.Felix.total - summary.Shervin.total);
-  let leader;
-  if (summary.Felix.total < summary.Shervin.total) {
-    leader = 'Felix';
-  } else if (summary.Shervin.total < summary.Felix.total) {
-    leader = 'Shervin';
-  } else {
-    leader = 'Gleichstand';
-  }
-
-  res.json({
-    Felix: { total: summary.Felix.total, days: summary.Felix.days },
-    Shervin: { total: summary.Shervin.total, days: summary.Shervin.days },
-    leader,
-    difference: Math.round(diff * 100) / 100
-  });
 });
 
-// Catch-all: serve frontend for any non-API route
+// Catch-all → frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`🍔 Food Tracker Backend läuft auf http://localhost:${PORT}`);
+// Start
+initDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🍔 Food Tracker läuft auf http://localhost:${PORT}`);
+  });
+}).catch(err => {
+  console.error('❌ DB Init fehlgeschlagen:', err);
+  process.exit(1);
 });
