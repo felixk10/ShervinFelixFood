@@ -137,6 +137,30 @@ body {
   margin-bottom: 8px;
 }
 
+.score-avatar.clickable {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  position: relative;
+}
+
+.score-avatar.clickable:hover {
+  transform: scale(1.2);
+}
+
+.score-avatar.clickable::after {
+  content: '✏️';
+  position: absolute;
+  bottom: -2px;
+  right: -8px;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.score-avatar.clickable:hover::after {
+  opacity: 1;
+}
+
 .score-card h2 {
   font-size: 1.1rem;
   font-weight: 700;
@@ -609,6 +633,39 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   transform: scale(0.9) translateY(20px);
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.avatar-picker-modal {
+  max-width: 380px;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.avatar-option {
+  font-size: 2rem;
+  padding: 10px 6px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.avatar-option:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--bg-card-hover);
+  transform: scale(1.15);
+}
+
+.avatar-option.selected {
+  border-color: var(--accent-gold);
+  background: rgba(255, 211, 42, 0.1);
+  box-shadow: 0 0 14px rgba(255, 211, 42, 0.2);
 }
 
 .confirm-overlay.show .confirm-modal {

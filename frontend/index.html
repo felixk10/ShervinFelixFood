@@ -22,7 +22,7 @@
     <!-- Scoreboard -->
     <section class="scoreboard" id="scoreboard">
       <div class="score-card felix" id="card-felix">
-        <div class="score-avatar">🧑‍💻</div>
+        <div class="score-avatar clickable" data-person="Felix" id="avatar-felix" title="Avatar ändern">🧑‍💻</div>
         <h2>Felix</h2>
         <div class="score-amount" id="total-felix">0€</div>
         <div class="score-days" id="days-felix">0 Tage</div>
@@ -34,7 +34,7 @@
       </div>
 
       <div class="score-card shervin" id="card-shervin">
-        <div class="score-avatar">😎</div>
+        <div class="score-avatar clickable" data-person="Shervin" id="avatar-shervin" title="Avatar ändern">😎</div>
         <h2>Shervin</h2>
         <div class="score-amount" id="total-shervin">0€</div>
         <div class="score-days" id="days-shervin">0 Tage</div>
@@ -127,6 +127,19 @@
       <div class="confirm-actions">
         <button class="confirm-btn cancel" id="confirm-cancel">Abbrechen</button>
         <button class="confirm-btn delete" id="confirm-delete">Löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avatar Picker Modal -->
+  <div class="confirm-overlay" id="avatar-overlay">
+    <div class="confirm-modal avatar-picker-modal">
+      <div class="confirm-icon">👨‍🍳</div>
+      <h3 class="confirm-title" id="avatar-picker-title">Avatar wählen</h3>
+      <p class="confirm-text">Wähle deinen Koch-Avatar!</p>
+      <div class="avatar-grid" id="avatar-grid"></div>
+      <div class="confirm-actions">
+        <button class="confirm-btn cancel" id="avatar-cancel">Abbrechen</button>
       </div>
     </div>
   </div>

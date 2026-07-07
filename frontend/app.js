@@ -10,6 +10,25 @@ const CAT_EMOJI = {
   'Sonstiges': '🍽️'
 };
 
+// Avatar collection
+const AVATARS = [
+  '👨‍🍳', '👩‍🍳', '🧑‍🍳',
+  '🍳', '🥘', '🧁',
+  '🍕', '🍔', '🍜',
+  '🍣', '🌮', '🥐',
+  '🧑‍💻', '😎', '🍩'
+];
+
+const DEFAULT_AVATARS = { Felix: '🧑‍💻', Shervin: '😎' };
+
+function getAvatar(person) {
+  return localStorage.getItem(`avatar_${person}`) || DEFAULT_AVATARS[person] || '🧑‍🍳';
+}
+
+function setAvatar(person, emoji) {
+  localStorage.setItem(`avatar_${person}`, emoji);
+}
+
 // ===== STATE =====
 let selectedPerson = 'Felix';
 let selectedCategory = 'Asiatisch';
@@ -33,9 +52,55 @@ document.addEventListener('DOMContentLoaded', () => {
   setDefaultDate();
   setupPersonToggle();
   setupCategoryToggle();
+  setupAvatarPicker();
+  loadAvatars();
   form.addEventListener('submit', handleSubmit);
   loadData();
 });
+
+function loadAvatars() {
+  $('#avatar-felix').textContent = getAvatar('Felix');
+  $('#avatar-shervin').textContent = getAvatar('Shervin');
+}
+
+function setupAvatarPicker() {
+  const overlay = $('#avatar-overlay');
+  const grid = $('#avatar-grid');
+  const cancelBtn = $('#avatar-cancel');
+  const title = $('#avatar-picker-title');
+  let currentPerson = null;
+
+  // Click on scoreboard avatars
+  $$('.score-avatar.clickable').forEach(el => {
+    el.addEventListener('click', () => {
+      currentPerson = el.dataset.person;
+      title.textContent = `Avatar für ${currentPerson}`;
+      const currentAvatar = getAvatar(currentPerson);
+
+      grid.innerHTML = AVATARS.map(emoji => `
+        <button type="button" class="avatar-option ${emoji === currentAvatar ? 'selected' : ''}" data-emoji="${emoji}">${emoji}</button>
+      `).join('');
+
+      // Click on avatar option
+      grid.querySelectorAll('.avatar-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setAvatar(currentPerson, btn.dataset.emoji);
+          loadAvatars();
+          overlay.classList.remove('show');
+          renderEntries(allExpenses);
+          showToast(`Avatar für ${currentPerson} geändert!`, 'success');
+        });
+      });
+
+      overlay.classList.add('show');
+    });
+  });
+
+  cancelBtn.addEventListener('click', () => overlay.classList.remove('show'));
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+}
 
 function setDefaultDate() {
   const now = new Date();
@@ -199,11 +264,11 @@ function renderScoreboard(summary) {
   if (summary.leader === 'Felix') {
     felixCard.classList.add('leading');
     banner.classList.add('felix-leads');
-    $('#leader-text').textContent = `🧑‍💻 Felix spart mehr! (${formatEuro(summary.difference)} weniger)`;
+    $('#leader-text').textContent = `${getAvatar('Felix')} Felix spart mehr! (${formatEuro(summary.difference)} weniger)`;
   } else if (summary.leader === 'Shervin') {
     shervinCard.classList.add('leading');
     banner.classList.add('shervin-leads');
-    $('#leader-text').textContent = `😎 Shervin spart mehr! (${formatEuro(summary.difference)} weniger)`;
+    $('#leader-text').textContent = `${getAvatar('Shervin')} Shervin spart mehr! (${formatEuro(summary.difference)} weniger)`;
   } else {
     $('#leader-text').textContent = summary.Felix.total === 0 && summary.Shervin.total === 0
       ? '🤝 Noch keine Daten — wer gibt weniger aus?'
@@ -237,7 +302,7 @@ function renderEntries(expenses) {
 
   entriesList.innerHTML = sorted.map(entry => {
     const personClass = entry.person === 'Felix' ? 'felix-entry' : 'shervin-entry';
-    const emoji = entry.person === 'Felix' ? '🧑‍💻' : '😎';
+    const emoji = getAvatar(entry.person);
     const dateFormatted = formatDate(entry.date);
     const catEmoji = CAT_EMOJI[entry.category] || '🍽️';
     const catName = entry.category || 'Sonstiges';
