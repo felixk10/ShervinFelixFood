@@ -196,59 +196,69 @@ async function handleSubmit(e) {
 
 function setupContestantsModal() {
   // Open modal
-  btnManageContestants.addEventListener('click', () => {
-    resetContestantForm();
-    renderModalAvatarGrid();
-    contestantModalOverlay.classList.add('show');
-  });
+  if (btnManageContestants) {
+    btnManageContestants.addEventListener('click', () => {
+      resetContestantForm();
+      renderModalAvatarGrid();
+      if (contestantModalOverlay) contestantModalOverlay.classList.add('show');
+    });
+  }
 
   // Close modal
-  btnContestantClose.addEventListener('click', () => {
-    contestantModalOverlay.classList.remove('show');
-  });
+  if (btnContestantClose) {
+    btnContestantClose.addEventListener('click', () => {
+      if (contestantModalOverlay) contestantModalOverlay.classList.remove('show');
+    });
+  }
 
-  contestantModalOverlay.addEventListener('click', (e) => {
-    if (e.target === contestantModalOverlay) {
-      contestantModalOverlay.classList.remove('show');
-    }
-  });
+  if (contestantModalOverlay) {
+    contestantModalOverlay.addEventListener('click', (e) => {
+      if (e.target === contestantModalOverlay) {
+        contestantModalOverlay.classList.remove('show');
+      }
+    });
+  }
 
   // Reset form / cancel edit
-  btnContestantClear.addEventListener('click', resetContestantForm);
+  if (btnContestantClear) {
+    btnContestantClear.addEventListener('click', resetContestantForm);
+  }
 
   // Submit form (Create / Update)
-  contestantForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const id = contestantIdInput.value;
-    const name = contestantNameInput.value.trim();
-    const avatar = selectedModalAvatar;
+  if (contestantForm) {
+    contestantForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = contestantIdInput ? contestantIdInput.value : '';
+      const name = contestantNameInput ? contestantNameInput.value.trim() : '';
+      const avatar = selectedModalAvatar;
 
-    if (!name || !avatar) {
-      showToast('Name und Avatar eingeben', 'error');
-      return;
-    }
+      if (!name || !avatar) {
+        showToast('Name und Avatar eingeben', 'error');
+        return;
+      }
 
-    const isEdit = !!id;
-    const url = isEdit ? `${API_BASE}/contestants/${id}` : `${API_BASE}/contestants`;
-    const method = isEdit ? 'PUT' : 'POST';
+      const isEdit = !!id;
+      const url = isEdit ? `${API_BASE}/contestants/${id}` : `${API_BASE}/contestants`;
+      const method = isEdit ? 'PUT' : 'POST';
 
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, avatar })
-      });
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, avatar })
+        });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Speichern fehlgeschlagen');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Speichern fehlgeschlagen');
 
-      showToast(isEdit ? 'Mitbewerber aktualisiert!' : 'Mitbewerber hinzugefügt!', 'success');
-      resetContestantForm();
-      await loadData();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  });
+        showToast(isEdit ? 'Mitbewerber aktualisiert!' : 'Mitbewerber hinzugefügt!', 'success');
+        resetContestantForm();
+        await loadData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  }
 }
 
 function renderModalAvatarGrid() {
