@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <!-- Chart.js via CDN for progression line graph -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="app">
@@ -19,26 +21,9 @@
       <p class="subtitle">Felix vs Shervin · Juli 2026</p>
     </header>
 
-    <!-- Scoreboard -->
-    <section class="scoreboard" id="scoreboard">
-      <div class="score-card felix" id="card-felix">
-        <div class="score-avatar clickable" data-person="Felix" id="avatar-felix" title="Avatar ändern">🧑‍💻</div>
-        <h2>Felix</h2>
-        <div class="score-amount" id="total-felix">0€</div>
-        <div class="score-days" id="days-felix">0 Tage</div>
-      </div>
-
-      <div class="vs-badge" id="vs-badge">
-        <div class="vs-text">VS</div>
-        <div class="vs-diff" id="vs-diff"></div>
-      </div>
-
-      <div class="score-card shervin" id="card-shervin">
-        <div class="score-avatar clickable" data-person="Shervin" id="avatar-shervin" title="Avatar ändern">😎</div>
-        <h2>Shervin</h2>
-        <div class="score-amount" id="total-shervin">0€</div>
-        <div class="score-days" id="days-shervin">0 Tage</div>
-      </div>
+    <!-- Scoreboard Container -->
+    <section class="scoreboard" id="scoreboard-container">
+      <!-- Dynamically generated scoreboard cards -->
     </section>
 
     <!-- Leader banner -->
@@ -46,14 +31,22 @@
       <span id="leader-text">Noch keine Daten</span>
     </div>
 
+    <!-- Manage Contestants Header Action -->
+    <section class="contestants-bar-section">
+      <div class="bar-header">
+        <span>Mitbewerber</span>
+        <button type="button" class="manage-btn" id="btn-manage-contestants">👥 Verwalten / Hinzufügen</button>
+      </div>
+    </section>
+
     <!-- Add expense form -->
     <section class="add-section">
       <h3>✏️ Ausgabe eintragen</h3>
       <form id="expense-form" class="expense-form">
         <div class="form-row">
-          <div class="person-toggle" id="person-toggle">
-            <button type="button" class="person-btn active" data-person="Felix">🧑‍💻 Felix</button>
-            <button type="button" class="person-btn" data-person="Shervin">😎 Shervin</button>
+          <label class="toggle-label">Wer hat bezahlt?</label>
+          <div class="person-toggle" id="person-toggle-container">
+            <!-- Dynamically populated contestant toggle buttons -->
           </div>
         </div>
         <div class="form-row two-col">
@@ -68,7 +61,7 @@
         </div>
         <div class="form-row">
           <div class="input-group">
-            <label for="expense-category">Kategorie</label>
+            <label>Kategorie</label>
             <div class="category-selector" id="category-selector">
               <button type="button" class="cat-btn active" data-cat="Asiatisch">🍜 Asiatisch</button>
               <button type="button" class="cat-btn" data-cat="Mediterran">🥗 Mediterran</button>
@@ -84,6 +77,22 @@
       </form>
     </section>
 
+    <!-- Progression Chart -->
+    <section class="chart-section">
+      <h3>📈 Ausgabenverlauf (Kumuliert)</h3>
+      <div class="chart-wrapper">
+        <canvas id="progression-chart"></canvas>
+      </div>
+    </section>
+
+    <!-- Favorite Food Stats -->
+    <section class="stats-section">
+      <h3>⭐ Lieblingsessen (Häufigste Kategorie)</h3>
+      <div class="stats-grid" id="stats-grid">
+        <!-- Dynamically populated favorite food widgets -->
+      </div>
+    </section>
+
     <!-- Recent entries -->
     <section class="entries-section">
       <h3>📋 Letzte Einträge</h3>
@@ -97,13 +106,8 @@
       <h3>📊 Tagesübersicht</h3>
       <div class="breakdown-table-wrap">
         <table class="breakdown-table" id="breakdown-table">
-          <thead>
-            <tr>
-              <th>Datum</th>
-              <th>Felix</th>
-              <th>Shervin</th>
-              <th>👑</th>
-            </tr>
+          <thead id="breakdown-head">
+            <!-- Dynamically generated table headers based on active contestants -->
           </thead>
           <tbody id="breakdown-body"></tbody>
         </table>
@@ -118,7 +122,7 @@
 
   <script src="app.js"></script>
 
-  <!-- Confirm Modal -->
+  <!-- Delete Confirm Modal -->
   <div class="confirm-overlay" id="confirm-overlay">
     <div class="confirm-modal">
       <div class="confirm-icon">🗑️</div>
@@ -131,15 +135,43 @@
     </div>
   </div>
 
-  <!-- Avatar Picker Modal -->
-  <div class="confirm-overlay" id="avatar-overlay">
-    <div class="confirm-modal avatar-picker-modal">
-      <div class="confirm-icon">👨‍🍳</div>
-      <h3 class="confirm-title" id="avatar-picker-title">Avatar wählen</h3>
-      <p class="confirm-text">Wähle deinen Koch-Avatar!</p>
-      <div class="avatar-grid" id="avatar-grid"></div>
-      <div class="confirm-actions">
-        <button class="confirm-btn cancel" id="avatar-cancel">Abbrechen</button>
+  <!-- Contestant Management Modal (Full CRUD) -->
+  <div class="confirm-overlay" id="contestant-modal-overlay">
+    <div class="confirm-modal contestant-modal">
+      <h3 class="confirm-title" id="contestant-modal-title">Mitbewerber verwalten</h3>
+      <p class="confirm-text">Erstelle neue oder bearbeite bestehende Mitbewerber.</p>
+      
+      <div class="contestant-form-wrap">
+        <form id="contestant-form">
+          <input type="hidden" id="contestant-id" value="" />
+          <div class="input-group">
+            <label for="contestant-name">Name</label>
+            <input type="text" id="contestant-name" placeholder="z.B. Max" required />
+          </div>
+          <div class="input-group">
+            <label>Avatar wählen</label>
+            <div class="avatar-grid" id="modal-avatar-grid">
+              <!-- Dynamically populated chef avatar options -->
+            </div>
+          </div>
+          <div class="confirm-actions">
+            <button type="button" class="confirm-btn cancel" id="btn-contestant-clear" style="display:none;">Abbrechen</button>
+            <button type="submit" class="confirm-btn delete" id="btn-contestant-save">Hinzufügen</button>
+          </div>
+        </form>
+      </div>
+
+      <hr class="modal-divider" />
+
+      <div class="contestant-list-wrapper">
+        <label class="modal-section-label">Aktuelle Mitbewerber</label>
+        <div class="contestant-list" id="contestant-list">
+          <!-- Dynamically populated list of active contestants with Edit/Delete options -->
+        </div>
+      </div>
+
+      <div class="confirm-actions" style="margin-top: 20px;">
+        <button class="confirm-btn cancel" id="btn-contestant-close" style="width: 100%;">Schließen</button>
       </div>
     </div>
   </div>
