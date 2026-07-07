@@ -353,12 +353,16 @@ window.deleteContestant = async function(id, name) {
 // ===== RENDER STATS & WIDGETS =====
 
 function renderScoreboard(summary) {
+  if (!scoreboardContainer) return;
+
   if (contestants.length === 0) {
     scoreboardContainer.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 20px; color:var(--text-muted);">Noch keine Mitbewerber angelegt.</div>';
-    $('#leader-banner').style.display = 'none';
+    const leaderBanner = $('#leader-banner');
+    if (leaderBanner) leaderBanner.style.display = 'none';
     return;
   }
-  $('#leader-banner').style.display = 'block';
+  const leaderBanner = $('#leader-banner');
+  if (leaderBanner) leaderBanner.style.display = 'block';
 
   // Build grid of scorecards
   let cardsHTML = '';
@@ -392,30 +396,35 @@ function renderScoreboard(summary) {
 
   // Leader banner text
   const banner = $('#leader-banner');
-  banner.className = 'leader-banner';
+  if (banner) {
+    banner.className = 'leader-banner';
 
-  if (summary.leader && summary.contestants[summary.leader]) {
-    const leaderData = summary.contestants[summary.leader];
-    const isFelix = summary.leader.toLowerCase() === 'felix';
-    const isShervin = summary.leader.toLowerCase() === 'shervin';
+    if (summary.leader && summary.contestants[summary.leader]) {
+      const leaderData = summary.contestants[summary.leader];
+      const isFelix = summary.leader.toLowerCase() === 'felix';
+      const isShervin = summary.leader.toLowerCase() === 'shervin';
 
-    if (isFelix) banner.classList.add('felix-leads');
-    else if (isShervin) banner.classList.add('shervin-leads');
+      if (isFelix) banner.classList.add('felix-leads');
+      else if (isShervin) banner.classList.add('shervin-leads');
 
-    if (summary.difference > 0) {
-      banner.innerHTML = `<span id="leader-text">${leaderData.avatar} <strong>${summary.leader}</strong> spart am meisten! (${formatEuro(summary.difference)} weniger als Platz 2)</span>`;
-      $('#vs-diff').textContent = `${formatEuro(summary.difference)}`;
+      const vsDiffEl = $('#vs-diff');
+      if (summary.difference > 0) {
+        banner.innerHTML = `<span id="leader-text">${leaderData.avatar} <strong>${summary.leader}</strong> spart am meisten! (${formatEuro(summary.difference)} weniger als Platz 2)</span>`;
+        if (vsDiffEl) vsDiffEl.textContent = `${formatEuro(summary.difference)}`;
+      } else {
+        banner.innerHTML = `<span id="leader-text">${leaderData.avatar} <strong>${summary.leader}</strong> spart am meisten!</span>`;
+        if (vsDiffEl) vsDiffEl.textContent = '';
+      }
     } else {
-      banner.innerHTML = `<span id="leader-text">${leaderData.avatar} <strong>${summary.leader}</strong> spart am meisten!</span>`;
-      $('#vs-diff').textContent = '';
+      banner.innerHTML = '<span id="leader-text">🤝 Gleichstand oder noch keine Daten eingetragen!</span>';
+      const vsDiffEl = $('#vs-diff');
+      if (vsDiffEl) vsDiffEl.textContent = '';
     }
-  } else {
-    banner.innerHTML = '<span id="leader-text">🤝 Gleichstand oder noch keine Daten eingetragen!</span>';
-    $('#vs-diff').textContent = '';
   }
 }
 
 function renderFavoriteFoods(expenses) {
+  if (!statsGrid) return;
   if (expenses.length === 0 || contestants.length === 0) {
     statsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--text-muted);">Noch keine Essenstatistiken verfügbar</div>';
     return;
@@ -595,7 +604,14 @@ function renderBreakdown(expenses) {
 // ===== NEW FEATURE: PROGRESSION CHART =====
 
 function renderProgressionChart(expenses) {
-  const ctx = document.getElementById('progression-chart').getContext('2d');
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js is not loaded. Skipping chart rendering.');
+    return;
+  }
+
+  const chartCanvas = document.getElementById('progression-chart');
+  if (!chartCanvas) return;
+  const ctx = chartCanvas.getContext('2d');
   
   if (chartInstance) {
     chartInstance.destroy();
