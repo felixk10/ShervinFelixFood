@@ -24,7 +24,7 @@
       <div class="score-card felix" id="card-felix">
         <div class="score-avatar">🧑‍💻</div>
         <h2>Felix</h2>
-        <div class="score-amount" id="total-felix">0,00 €</div>
+        <div class="score-amount" id="total-felix">0€</div>
         <div class="score-days" id="days-felix">0 Tage</div>
       </div>
 
@@ -36,7 +36,7 @@
       <div class="score-card shervin" id="card-shervin">
         <div class="score-avatar">😎</div>
         <h2>Shervin</h2>
-        <div class="score-amount" id="total-shervin">0,00 €</div>
+        <div class="score-amount" id="total-shervin">0€</div>
         <div class="score-days" id="days-shervin">0 Tage</div>
       </div>
     </section>
@@ -64,6 +64,18 @@
           <div class="input-group">
             <label for="expense-amount">Betrag (€)</label>
             <input type="number" id="expense-amount" step="0.01" min="0" placeholder="z.B. 8.50" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="input-group">
+            <label for="expense-category">Kategorie</label>
+            <div class="category-selector" id="category-selector">
+              <button type="button" class="cat-btn active" data-cat="Asiatisch">🍜 Asiatisch</button>
+              <button type="button" class="cat-btn" data-cat="Mediterran">🥗 Mediterran</button>
+              <button type="button" class="cat-btn" data-cat="Fast Food">🍔 Fast Food</button>
+              <button type="button" class="cat-btn" data-cat="Selbst gekocht">🏠 Selbst gekocht</button>
+              <button type="button" class="cat-btn" data-cat="Sonstiges">🍽️ Sonstiges</button>
+            </div>
           </div>
         </div>
         <button type="submit" class="submit-btn" id="submit-btn">

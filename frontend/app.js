@@ -1,8 +1,18 @@
 // ===== CONFIG =====
 const API_BASE = window.location.origin + '/api';
 
+// Category emoji map
+const CAT_EMOJI = {
+  'Asiatisch': '🍜',
+  'Mediterran': '🥗',
+  'Fast Food': '🍔',
+  'Selbst gekocht': '🏠',
+  'Sonstiges': '🍽️'
+};
+
 // ===== STATE =====
 let selectedPerson = 'Felix';
+let selectedCategory = 'Asiatisch';
 let allExpenses = [];
 
 // ===== DOM ELEMENTS =====
@@ -13,6 +23,7 @@ const form = $('#expense-form');
 const dateInput = $('#expense-date');
 const amountInput = $('#expense-amount');
 const personBtns = $$('.person-btn');
+const catBtns = $$('.cat-btn');
 const submitBtn = $('#submit-btn');
 const entriesList = $('#entries-list');
 const breakdownBody = $('#breakdown-body');
@@ -21,14 +32,17 @@ const breakdownBody = $('#breakdown-body');
 document.addEventListener('DOMContentLoaded', () => {
   setDefaultDate();
   setupPersonToggle();
+  setupCategoryToggle();
   form.addEventListener('submit', handleSubmit);
   loadData();
 });
 
 function setDefaultDate() {
-  const today = new Date().toISOString().split('T')[0];
-  dateInput.value = today;
-  // Limit to July 2026 weekdays
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  dateInput.value = `${y}-${m}-${d}`;
   dateInput.min = '2026-07-01';
   dateInput.max = '2026-07-31';
 }
@@ -39,6 +53,16 @@ function setupPersonToggle() {
       personBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       selectedPerson = btn.dataset.person;
+    });
+  });
+}
+
+function setupCategoryToggle() {
+  catBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedCategory = btn.dataset.cat;
     });
   });
 }
@@ -59,7 +83,7 @@ async function loadData() {
     renderBreakdown(allExpenses);
   } catch (err) {
     console.error('Fehler beim Laden:', err);
-    showToast('❌ Verbindung zum Server fehlgeschlagen', 'error');
+    showToast('Verbindung zum Server fehlgeschlagen', 'error');
   }
 }
 
@@ -70,14 +94,16 @@ async function handleSubmit(e) {
   const amount = parseFloat(amountInput.value);
 
   if (!date || isNaN(amount) || amount < 0) {
-    showToast('⚠️ Bitte Datum und Betrag eingeben', 'error');
+    showToast('Bitte Datum und Betrag eingeben', 'error');
     return;
   }
 
   // Check if weekday
-  const dayOfWeek = new Date(date).getDay();
+  const parts = date.split('-');
+  const checkDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const dayOfWeek = checkDate.getDay();
   if (dayOfWeek === 0 || dayOfWeek === 6) {
-    showToast('⚠️ Nur Wochentage (Mo-Fr) erlaubt!', 'error');
+    showToast('Nur Wochentage (Mo-Fr) erlaubt!', 'error');
     return;
   }
 
@@ -90,7 +116,8 @@ async function handleSubmit(e) {
       body: JSON.stringify({
         person: selectedPerson,
         date,
-        amount
+        amount,
+        category: selectedCategory
       })
     });
 
@@ -100,10 +127,10 @@ async function handleSubmit(e) {
     }
 
     amountInput.value = '';
-    showToast(`✅ ${amount.toFixed(2)} € für ${selectedPerson} eingetragen!`, 'success');
+    showToast(`${formatEuro(amount)} für ${selectedPerson} eingetragen!`, 'success');
     await loadData();
   } catch (err) {
-    showToast(`❌ ${err.message}`, 'error');
+    showToast(`${err.message}`, 'error');
   } finally {
     submitBtn.disabled = false;
   }
@@ -199,8 +226,8 @@ function renderEntries(expenses) {
 
   // Sort by date descending, then by created_at descending
   const sorted = [...expenses].sort((a, b) => {
-    const strA = typeof a.date === 'string' ? a.date.split('T')[0] : (a.date ? new Date(a.date).toISOString().split('T')[0] : '');
-    const strB = typeof b.date === 'string' ? b.date.split('T')[0] : (b.date ? new Date(b.date).toISOString().split('T')[0] : '');
+    const strA = toDateKey(a.date);
+    const strB = toDateKey(b.date);
     const dateDiff = strB.localeCompare(strA);
     if (dateDiff !== 0) return dateDiff;
     const createdA = a.created_at || a.createdAt || '';
@@ -212,13 +239,18 @@ function renderEntries(expenses) {
     const personClass = entry.person === 'Felix' ? 'felix-entry' : 'shervin-entry';
     const emoji = entry.person === 'Felix' ? '🧑‍💻' : '😎';
     const dateFormatted = formatDate(entry.date);
+    const catEmoji = CAT_EMOJI[entry.category] || '🍽️';
+    const catName = entry.category || 'Sonstiges';
 
     return `
       <div class="entry-item ${personClass}">
         <div class="entry-person">${emoji}</div>
         <div class="entry-details">
           <div class="entry-name">${entry.person}</div>
-          <div class="entry-date">${dateFormatted}</div>
+          <div class="entry-meta">
+            <span class="entry-date">${dateFormatted}</span>
+            <span class="entry-cat">${catEmoji} ${catName}</span>
+          </div>
         </div>
         <div class="entry-amount">${formatEuro(entry.amount)}</div>
         <button class="entry-delete" onclick="deleteExpense('${entry.id}')" title="Löschen">🗑️</button>
@@ -232,8 +264,8 @@ function renderBreakdown(expenses) {
   const byDate = {};
   for (const e of expenses) {
     if (!e.date) continue;
-    const dateKey = typeof e.date === 'string' ? e.date.split('T')[0] : new Date(e.date).toISOString().split('T')[0];
-    if (!dateKey || dateKey === 'Invalid Date') continue;
+    const dateKey = toDateKey(e.date);
+    if (!dateKey) continue;
     if (!byDate[dateKey]) byDate[dateKey] = { Felix: 0, Shervin: 0 };
     byDate[dateKey][e.person] += parseFloat(e.amount || 0);
   }
@@ -268,43 +300,52 @@ function renderBreakdown(expenses) {
 
 // ===== HELPERS =====
 
+// Extracts a clean YYYY-MM-DD key from any date format
+function toDateKey(dateVal) {
+  if (!dateVal) return '';
+  const s = String(dateVal);
+  // Already YYYY-MM-DD or YYYY-MM-DDTHH:...
+  const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : '';
+}
+
 function formatEuro(amount) {
   const num = parseFloat(amount || 0);
   let str;
   if (num % 1 === 0) {
-    // Whole number: 9€
     str = num.toString();
   } else {
-    // Has decimals: remove trailing zeros (9,50 → 9,5)
     str = num.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
     str = str.replace('.', ',');
   }
   return str + '€';
 }
 
+// Manual date formatting — no browser locale dependency
+const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+
 function formatDate(dateVal) {
   if (!dateVal) return '—';
-  try {
-    const str = typeof dateVal === 'string' ? dateVal : new Date(dateVal).toISOString();
-    const dateOnly = str.split('T')[0];
-    const parts = dateOnly.split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
-        const d = new Date(year, month, day);
-        return d.toLocaleDateString('de-DE', {
-          weekday: 'short',
-          day: '2-digit',
-          month: '2-digit'
-        });
-      }
-    }
-  } catch (err) {
-    console.error('Error formatting date:', dateVal, err);
-  }
-  return String(dateVal);
+  const key = toDateKey(dateVal);
+  if (!key) return String(dateVal);
+
+  const parts = key.split('-');
+  if (parts.length !== 3) return key;
+
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return key;
+
+  const d = new Date(year, month - 1, day);
+  if (isNaN(d.getTime())) return key;
+
+  const wd = WEEKDAYS[d.getDay()];
+  const dd = String(day).padStart(2, '0');
+  const mm = String(month).padStart(2, '0');
+
+  return `${wd}., ${dd}.${mm}.`;
 }
 
 // ===== TOAST =====

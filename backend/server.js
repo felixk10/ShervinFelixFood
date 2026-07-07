@@ -13,13 +13,16 @@ types.setTypeParser(1082, val => val);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Valid categories
+const CATEGORIES = ['Asiatisch', 'Mediterran', 'Fast Food', 'Selbst gekocht', 'Sonstiges'];
+
 // --- Database ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Auto-create table if it doesn't exist
+// Auto-create table if it doesn't exist + migrate category column
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS expenses (
@@ -30,6 +33,20 @@ async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+
+  // Add category column if it doesn't exist yet (migration)
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'expenses' AND column_name = 'category'
+      ) THEN
+        ALTER TABLE expenses ADD COLUMN category TEXT DEFAULT 'Sonstiges';
+      END IF;
+    END $$;
+  `);
+
   console.log('✅ Datenbank bereit');
 }
 
@@ -52,9 +69,14 @@ app.get('/api/expenses', async (req, res) => {
   }
 });
 
+// Get categories
+app.get('/api/categories', (req, res) => {
+  res.json(CATEGORIES);
+});
+
 // Add expense
 app.post('/api/expenses', async (req, res) => {
-  const { person, date, amount } = req.body;
+  const { person, date, amount, category } = req.body;
 
   if (!person || !date || amount === undefined) {
     return res.status(400).json({ error: 'person, date und amount sind Pflichtfelder.' });
@@ -66,10 +88,12 @@ app.post('/api/expenses', async (req, res) => {
     return res.status(400).json({ error: 'amount muss eine positive Zahl sein.' });
   }
 
+  const cat = CATEGORIES.includes(category) ? category : 'Sonstiges';
+
   try {
     const result = await pool.query(
-      'INSERT INTO expenses (person, date, amount) VALUES ($1, $2, $3) RETURNING *',
-      [person, date, Math.round(amount * 100) / 100]
+      'INSERT INTO expenses (person, date, amount, category) VALUES ($1, $2, $3, $4) RETURNING *',
+      [person, date, Math.round(amount * 100) / 100, cat]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -108,7 +132,8 @@ app.get('/api/summary', async (req, res) => {
 
     for (const e of expenses) {
       summary[e.person].total += parseFloat(e.amount);
-      const dateStr = typeof e.date === 'string' ? e.date.split('T')[0] : new Date(e.date).toISOString().split('T')[0];
+      // date is already a 'YYYY-MM-DD' string thanks to type parser
+      const dateStr = String(e.date || '').split('T')[0];
       summary[e.person].days.add(dateStr);
     }
 

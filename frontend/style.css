@@ -272,6 +272,39 @@ body {
   box-shadow: 0 0 16px var(--shervin-glow);
 }
 
+/* Category selector */
+.category-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cat-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.cat-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text);
+}
+
+.cat-btn.active {
+  border-color: var(--accent-gold);
+  background: rgba(255, 211, 42, 0.1);
+  color: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(255, 211, 42, 0.15);
+}
+
 /* Form */
 .form-row {
   margin-bottom: 14px;
@@ -408,9 +441,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-size: 0.9rem;
 }
 
+.entry-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
 .entry-date {
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+.entry-cat {
+  font-size: 0.7rem;
+  color: var(--accent-gold);
+  background: rgba(255, 211, 42, 0.08);
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-weight: 500;
 }
 
 .entry-amount {
@@ -838,6 +887,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .breakdown-table th,
   .breakdown-table td {
     padding: 8px 8px;
+  }
+
+  /* Category */
+  .cat-btn {
+    padding: 7px 10px;
+    font-size: 0.75rem;
   }
 
   /* Toast */
