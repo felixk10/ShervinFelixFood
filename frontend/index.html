@@ -21,98 +21,285 @@
       <p class="subtitle">Felix vs Shervin · Juli 2026</p>
     </header>
 
-    <!-- Scoreboard Container -->
-    <section class="scoreboard" id="scoreboard-container">
-      <!-- Dynamically generated scoreboard cards -->
-    </section>
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button type="button" class="tab-btn active" data-tab="food-tracker">🍔 Food Tracker</button>
+      <button type="button" class="tab-btn" data-tab="sms-reminders">💸 SMS Reminders</button>
+    </nav>
 
-    <!-- Leader banner -->
-    <div class="leader-banner" id="leader-banner">
-      <span id="leader-text">Noch keine Daten</span>
-    </div>
+    <!-- Tab Content: Food Tracker -->
+    <div id="tab-food-tracker" class="tab-content active">
+      <!-- Scoreboard Container -->
+      <section class="scoreboard" id="scoreboard-container">
+        <!-- Dynamically generated scoreboard cards -->
+      </section>
 
-    <!-- Manage Contestants Header Action -->
-    <section class="contestants-bar-section">
-      <div class="bar-header">
-        <span>Mitbewerber</span>
-        <button type="button" class="manage-btn" id="btn-manage-contestants">👥 Verwalten / Hinzufügen</button>
+      <!-- Leader banner -->
+      <div class="leader-banner" id="leader-banner">
+        <span id="leader-text">Noch keine Daten</span>
       </div>
-    </section>
 
-    <!-- Add expense form -->
-    <section class="add-section">
-      <h3>✏️ Ausgabe eintragen</h3>
-      <form id="expense-form" class="expense-form">
-        <div class="form-row">
-          <label class="toggle-label">Wer hat bezahlt?</label>
-          <div class="person-toggle" id="person-toggle-container">
-            <!-- Dynamically populated contestant toggle buttons -->
-          </div>
+      <!-- Manage Contestants Header Action -->
+      <section class="contestants-bar-section">
+        <div class="bar-header">
+          <span>Mitbewerber</span>
+          <button type="button" class="manage-btn" id="btn-manage-contestants">👥 Verwalten / Hinzufügen</button>
         </div>
-        <div class="form-row two-col">
-          <div class="input-group">
-            <label for="expense-date">Datum</label>
-            <input type="date" id="expense-date" required />
+      </section>
+
+      <!-- Add expense form -->
+      <section class="add-section">
+        <h3>✏️ Ausgabe eintragen</h3>
+        <form id="expense-form" class="expense-form">
+          <div class="form-row">
+            <label class="toggle-label">Wer hat bezahlt?</label>
+            <div class="person-toggle" id="person-toggle-container">
+              <!-- Dynamically populated contestant toggle buttons -->
+            </div>
           </div>
-          <div class="input-group">
-            <label for="expense-amount">Betrag (€)</label>
-            <input type="number" id="expense-amount" step="0.01" min="0" placeholder="z.B. 8.50" required />
+          <div class="form-row two-col">
+            <div class="input-group">
+              <label for="expense-date">Datum</label>
+              <input type="date" id="expense-date" required />
+            </div>
+            <div class="input-group">
+              <label for="expense-amount">Betrag (€)</label>
+              <input type="number" id="expense-amount" step="0.01" min="0" placeholder="z.B. 8.50" required />
+            </div>
           </div>
+          <div class="form-row">
+            <div class="input-group">
+              <label>Kategorie</label>
+              <div class="category-selector" id="category-selector">
+                <button type="button" class="cat-btn active" data-cat="Asiatisch">🍜 Asiatisch</button>
+                <button type="button" class="cat-btn" data-cat="Mediterran">🥗 Mediterran</button>
+                <button type="button" class="cat-btn" data-cat="Fast Food">🍔 Fast Food</button>
+                <button type="button" class="cat-btn" data-cat="Selbst gekocht">🏠 Selbst gekocht</button>
+                <button type="button" class="cat-btn" data-cat="Sonstiges">🍽️ Sonstiges</button>
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="submit-btn" id="submit-btn">
+            <span>💾 Eintragen</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- Progression Chart -->
+      <section class="chart-section">
+        <h3>📈 Ausgabenverlauf (Kumuliert)</h3>
+        <div class="chart-wrapper">
+          <canvas id="progression-chart"></canvas>
         </div>
-        <div class="form-row">
-          <div class="input-group">
-            <label>Kategorie</label>
-            <div class="category-selector" id="category-selector">
-              <button type="button" class="cat-btn active" data-cat="Asiatisch">🍜 Asiatisch</button>
-              <button type="button" class="cat-btn" data-cat="Mediterran">🥗 Mediterran</button>
-              <button type="button" class="cat-btn" data-cat="Fast Food">🍔 Fast Food</button>
-              <button type="button" class="cat-btn" data-cat="Selbst gekocht">🏠 Selbst gekocht</button>
-              <button type="button" class="cat-btn" data-cat="Sonstiges">🍽️ Sonstiges</button>
+      </section>
+
+      <!-- Favorite Food Stats -->
+      <section class="stats-section">
+        <h3>⭐ Lieblingsessen (Häufigste Kategorie)</h3>
+        <div class="stats-grid" id="stats-grid">
+          <!-- Dynamically populated favorite food widgets -->
+        </div>
+      </section>
+
+      <!-- Recent entries -->
+      <section class="entries-section">
+        <h3>📋 Letzte Einträge</h3>
+        <div class="entries-list" id="entries-list">
+          <div class="empty-state">Noch keine Einträge vorhanden</div>
+        </div>
+      </section>
+
+      <!-- Daily breakdown -->
+      <section class="breakdown-section">
+        <h3>📊 Tagesübersicht</h3>
+        <div class="breakdown-table-wrap">
+          <table class="breakdown-table" id="breakdown-table">
+            <thead id="breakdown-head">
+              <!-- Dynamically generated table headers based on active contestants -->
+            </thead>
+            <tbody id="breakdown-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </div> <!-- Ende tab-food-tracker -->
+
+    <!-- Tab Content: SMS Reminders -->
+    <div id="tab-sms-reminders" class="tab-content">
+      
+      <!-- Summary / Info cards for Debts -->
+      <section class="debts-summary-section">
+        <div class="summary-cards-grid">
+          <div class="summary-card">
+            <span class="card-icon">💸</span>
+            <div class="card-info">
+              <span class="card-value" id="summary-total-debts">0.00 €</span>
+              <span class="card-label">Gesamtschulden offen</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <span class="card-icon">👥</span>
+            <div class="card-info">
+              <span class="card-value" id="summary-debtors-count">0</span>
+              <span class="card-label">Schuldner</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <span class="card-icon">✉️</span>
+            <div class="card-info">
+              <span class="card-value" id="summary-reminders-sent">0</span>
+              <span class="card-label">Gesendete E-Mails</span>
             </div>
           </div>
         </div>
-        <button type="submit" class="submit-btn" id="submit-btn">
-          <span>💾 Eintragen</span>
-        </button>
-      </form>
-    </section>
+      </section>
 
-    <!-- Progression Chart -->
-    <section class="chart-section">
-      <h3>📈 Ausgabenverlauf (Kumuliert)</h3>
-      <div class="chart-wrapper">
-        <canvas id="progression-chart"></canvas>
-      </div>
-    </section>
+      <!-- Active Debtors List -->
+      <section class="debts-section">
+        <h3>👥 Offene Schulden & Status</h3>
+        <div class="debts-grid" id="debts-grid">
+          <div class="empty-state">Lade Schuldenliste...</div>
+        </div>
+      </section>
 
-    <!-- Favorite Food Stats -->
-    <section class="stats-section">
-      <h3>⭐ Lieblingsessen (Häufigste Kategorie)</h3>
-      <div class="stats-grid" id="stats-grid">
-        <!-- Dynamically populated favorite food widgets -->
-      </div>
-    </section>
+      <!-- Flex Container for Add Debt Form & Settings -->
+      <div class="reminder-flex-container">
+        <!-- Add Debt Form -->
+        <section class="debt-form-section">
+          <h3 id="debt-form-title">✏️ Schuldner hinzufügen</h3>
+          <form id="debt-form" class="expense-form">
+            <input type="hidden" id="debt-id" value="" />
+            
+            <div class="form-row two-col">
+              <div class="input-group">
+                <label for="debt-name">Name</label>
+                <input type="text" id="debt-name" placeholder="z.B. Felix" required />
+              </div>
+              <div class="input-group">
+                <label for="debt-email">E-Mail-Adresse</label>
+                <input type="email" id="debt-email" placeholder="z.B. felix@example.com" required />
+              </div>
+            </div>
 
-    <!-- Recent entries -->
-    <section class="entries-section">
-      <h3>📋 Letzte Einträge</h3>
-      <div class="entries-list" id="entries-list">
-        <div class="empty-state">Noch keine Einträge vorhanden</div>
-      </div>
-    </section>
+            <div class="form-row two-col">
+              <div class="input-group">
+                <label for="debt-amount">Betrag (€)</label>
+                <input type="number" id="debt-amount" step="0.01" min="0" placeholder="z.B. 15.00" required />
+              </div>
+              <div class="input-group">
+                <label for="debt-frequency">Intervall (Tage)</label>
+                <input type="number" id="debt-frequency" min="1" value="1" required />
+              </div>
+            </div>
 
-    <!-- Daily breakdown -->
-    <section class="breakdown-section">
-      <h3>📊 Tagesübersicht</h3>
-      <div class="breakdown-table-wrap">
-        <table class="breakdown-table" id="breakdown-table">
-          <thead id="breakdown-head">
-            <!-- Dynamically generated table headers based on active contestants -->
-          </thead>
-          <tbody id="breakdown-body"></tbody>
-        </table>
+            <div class="form-row">
+              <div class="input-group">
+                <label for="debt-reason">Grund (wofür?)</label>
+                <input type="text" id="debt-reason" placeholder="z.B. Pizza gestern Abend" required />
+              </div>
+            </div>
+
+            <div class="form-row form-checkbox-row">
+              <input type="checkbox" id="debt-active" checked />
+              <label for="debt-active" style="display: inline-block; cursor: pointer; margin-left: 8px;">Automatische E-Mail-Erinnerungen aktivieren</label>
+            </div>
+
+            <div class="confirm-actions" style="margin-top: 15px;">
+              <button type="button" class="confirm-btn cancel" id="btn-debt-clear" style="display:none;">Abbrechen</button>
+              <button type="submit" class="submit-btn" id="btn-debt-save">💾 Speichern</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- SMTP & Template Settings -->
+        <section class="settings-section">
+          <h3>⚙️ E-Mail & SMTP Einstellungen</h3>
+          <form id="settings-form" class="expense-form">
+            
+            <!-- Global Template -->
+            <div class="form-row">
+              <div class="input-group">
+                <label for="settings-subject">E-Mail-Betreff</label>
+                <input type="text" id="settings-subject" placeholder="z.B. Freundliche Erinnerung" required style="width: 100%; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(0, 0, 0, 0.3); color: #fff; outline: none; margin-bottom: 10px;" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="input-group">
+                <label for="settings-template">E-Mail-Nachrichtenvorlage</label>
+                <textarea id="settings-template" rows="5" style="resize: vertical; font-family: inherit; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.05); color: #fff; width: 100%; outline: none;" required></textarea>
+                <span class="input-tip" style="font-size: 0.8rem; color: #888; margin-top: 5px; display: block;">Nutze Platzhalter: <strong>{name}</strong>, <strong>{amount}</strong>, <strong>{reason}</strong></span>
+              </div>
+            </div>
+
+            <!-- Mock Mode Toggle -->
+            <div class="form-row form-checkbox-row">
+              <input type="checkbox" id="settings-mock-mode" checked />
+              <label for="settings-mock-mode" style="display: inline-block; cursor: pointer; margin-left: 8px;">⚙️ Mock-Modus (Mails nur simulieren & loggen)</label>
+            </div>
+
+            <!-- SMTP Credentials -->
+            <div class="settings-twilio-fields" id="twilio-fields-container">
+              <div class="form-row two-col">
+                <div class="input-group">
+                  <label for="settings-smtp-host">SMTP Server</label>
+                  <input type="text" id="settings-smtp-host" placeholder="z.B. smtp.gmail.com" value="smtp.gmail.com" />
+                </div>
+                <div class="input-group">
+                  <label for="settings-smtp-port">Port</label>
+                  <input type="text" id="settings-smtp-port" placeholder="z.B. 465" value="465" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="input-group">
+                  <label for="settings-smtp-user">Gmail E-Mail-Adresse</label>
+                  <input type="email" id="settings-smtp-user" placeholder="dein.name@gmail.com" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="input-group">
+                  <label for="settings-smtp-pass">Gmail App-Passwort</label>
+                  <input type="password" id="settings-smtp-pass" placeholder="16-stelliges Passwort" />
+                  <span class="input-tip" style="font-size: 0.8rem; color: #888; margin-top: 5px; display: block;">Gmail erfordert die Erstellung eines <strong>App-Passworts</strong> in deinen Google-Sicherheitseinstellungen.</span>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="submit-btn" style="margin-top: 15px;">
+              <span>💾 Einstellungen speichern</span>
+            </button>
+          </form>
+        </section>
       </div>
-    </section>
+
+      <!-- SMS Logs Section -->
+      <section class="entries-section logs-section">
+        <h3>📋 E-Mail Versand-Historie</h3>
+        <div class="logs-filter-row" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+          <label for="logs-filter-debtor">Filter nach Schuldner:</label>
+          <select id="logs-filter-debtor" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: #fff; cursor: pointer;">
+            <option value="all">Alle Schuldner</option>
+          </select>
+        </div>
+        <div class="breakdown-table-wrap">
+          <table class="breakdown-table" id="logs-table">
+            <thead>
+              <tr>
+                <th>Zeitpunkt</th>
+                <th>Schuldner</th>
+                <th>E-Mail-Adresse</th>
+                <th>Nachricht</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body">
+              <tr>
+                <td colspan="5" class="empty-table-state" style="text-align: center; color: #888; padding: 20px;">Keine E-Mail-Logs vorhanden</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div> <!-- Ende tab-sms-reminders -->
 
     <footer class="footer">
       <p>Made with ❤️ for less spending · Juli 2026</p>

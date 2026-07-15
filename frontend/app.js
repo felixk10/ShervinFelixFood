@@ -82,6 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setupContestantsModal();
   form.addEventListener('submit', handleSubmit);
   
+  // SMS Reminder and Tab Navigation Setup
+  setupTabSystem();
+  setupSMSReminderFeature();
+  
   // Initial load
   loadData();
 });
@@ -354,6 +358,20 @@ window.deleteContestant = async function(id, name) {
     if (!res.ok) throw new Error('Löschen fehlgeschlagen');
     showToast(`${name} gelöscht`, 'success');
     resetContestantForm();
+    await loadData();
+  } catch (err) {
+    showToast(`${err.message}`, 'error');
+  }
+};
+
+window.deleteExpense = async function(id) {
+  const confirmed = await showConfirm();
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/expenses/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Löschen fehlgeschlagen');
+    showToast('Eintrag gelöscht', 'success');
     await loadData();
   } catch (err) {
     showToast(`${err.message}`, 'error');
@@ -847,3 +865,492 @@ function showConfirm() {
     overlay.addEventListener('click', onOverlay);
   });
 }
+
+// ==========================================
+// --- E-Mail Debt Reminder Logic ---
+// ==========================================
+
+let activeTab = 'food-tracker';
+let debts = [];
+let settings = {};
+let reminderLogs = [];
+
+// Setup Tab Navigation
+function setupTabSystem() {
+  const tabBtns = document.querySelectorAll('.tab-nav .tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.dataset.tab;
+      
+      // Update buttons
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Update visibility
+      tabContents.forEach(c => {
+        if (c.id === `tab-${targetTab}`) {
+          c.classList.add('active');
+        } else {
+          c.classList.remove('active');
+        }
+      });
+
+      activeTab = targetTab;
+      if (activeTab === 'sms-reminders') {
+        loadReminderFeatureData();
+      }
+    });
+  });
+}
+
+// Setup Event Listeners for the E-Mail reminder page
+function setupSMSReminderFeature() {
+  const debtForm = document.getElementById('debt-form');
+  const settingsForm = document.getElementById('settings-form');
+  const mockModeCheckbox = document.getElementById('settings-mock-mode');
+  const smtpFields = document.getElementById('twilio-fields-container');
+  const btnClearDebt = document.getElementById('btn-debt-clear');
+  const logsFilter = document.getElementById('logs-filter-debtor');
+
+  // Toggle SMTP credential fields based on Mock Mode checkbox
+  mockModeCheckbox.addEventListener('change', () => {
+    if (mockModeCheckbox.checked) {
+      smtpFields.classList.add('hidden');
+    } else {
+      smtpFields.classList.remove('hidden');
+    }
+  });
+
+  // Debt Form submit
+  debtForm.addEventListener('submit', handleDebtSubmit);
+
+  // Clear / Cancel Edit button
+  btnClearDebt.addEventListener('click', clearDebtForm);
+
+  // Settings Form submit
+  settingsForm.addEventListener('submit', handleSettingsSubmit);
+
+  // Logs filter change
+  logsFilter.addEventListener('change', (e) => {
+    renderLogs(e.target.value);
+  });
+}
+
+// Load all data related to E-Mail Reminders
+async function loadReminderFeatureData() {
+  try {
+    await Promise.all([
+      fetchSettings(),
+      fetchDebts(),
+      fetchLogs('all')
+    ]);
+  } catch (err) {
+    console.error('Error loading Email features:', err);
+    showToast('Fehler beim Laden der E-Mail-Daten', 'error');
+  }
+}
+
+// Fetch global SMTP settings
+async function fetchSettings() {
+  const res = await fetch(`${API_BASE}/settings`);
+  settings = await res.json();
+
+  // Populate settings form
+  const subjectInput = document.getElementById('settings-subject');
+  const templateArea = document.getElementById('settings-template');
+  const mockCheckbox = document.getElementById('settings-mock-mode');
+  const smtpHost = document.getElementById('settings-smtp-host');
+  const smtpPort = document.getElementById('settings-smtp-port');
+  const smtpUser = document.getElementById('settings-smtp-user');
+  const smtpPass = document.getElementById('settings-smtp-pass');
+  const smtpFields = document.getElementById('twilio-fields-container');
+
+  subjectInput.value = settings.email_subject || 'Zahlungserinnerung';
+  templateArea.value = settings.email_template || '';
+  mockCheckbox.checked = settings.email_mock_mode !== 'false';
+
+  // Toggle field visibility
+  if (mockCheckbox.checked) {
+    smtpFields.classList.add('hidden');
+  } else {
+    smtpFields.classList.remove('hidden');
+  }
+
+  smtpHost.value = settings.smtp_host || 'smtp.gmail.com';
+  smtpPort.value = settings.smtp_port || '465';
+  smtpUser.value = settings.smtp_user || '';
+  smtpPass.value = settings.smtp_pass || '';
+}
+
+// Save global SMTP settings
+async function handleSettingsSubmit(e) {
+  e.preventDefault();
+  
+  const payload = {
+    email_mock_mode: document.getElementById('settings-mock-mode').checked ? 'true' : 'false',
+    email_subject: document.getElementById('settings-subject').value,
+    email_template: document.getElementById('settings-template').value,
+    smtp_host: document.getElementById('settings-smtp-host').value,
+    smtp_port: document.getElementById('settings-smtp-port').value,
+    smtp_user: document.getElementById('settings-smtp-user').value,
+    smtp_pass: document.getElementById('settings-smtp-pass').value
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message || 'Einstellungen gespeichert');
+      await fetchSettings();
+    } else {
+      showToast(data.error || 'Fehler beim Speichern', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Verbindungsfehler beim Speichern', 'error');
+  }
+}
+
+// Fetch all debts
+async function fetchDebts() {
+  const res = await fetch(`${API_BASE}/debts`);
+  debts = await res.json();
+  renderDebts();
+  updateDebtsSummary();
+  populateDebtorFilterDropdown();
+}
+
+// Populate logs filter select option
+function populateDebtorFilterDropdown() {
+  const filterSelect = document.getElementById('logs-filter-debtor');
+  const currentValue = filterSelect.value;
+  
+  filterSelect.innerHTML = '<option value="all">Alle Schuldner</option>';
+  
+  debts.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = d.name;
+    filterSelect.appendChild(opt);
+  });
+
+  if (debts.some(d => d.id === currentValue)) {
+    filterSelect.value = currentValue;
+  }
+}
+
+// Calculate and update top summary cards
+function updateDebtsSummary() {
+  const totalDebts = debts.reduce((sum, d) => sum + parseFloat(d.amount), 0);
+  const totalSentReminders = debts.reduce((sum, d) => sum + parseInt(d.reminders_sent || 0), 0);
+
+  document.getElementById('summary-total-debts').textContent = formatCurrency(totalDebts);
+  document.getElementById('summary-debtors-count').textContent = debts.length;
+  document.getElementById('summary-reminders-sent').textContent = totalSentReminders;
+}
+
+// Format date relative for debts cards
+function formatNextReminder(dateVal) {
+  if (!dateVal) return 'Ausstehend';
+  const nextDate = new Date(dateVal);
+  const now = new Date();
+  
+  const nextDateZero = new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+  const nowZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const diffTime = nextDateZero - nowZero;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Heute';
+  if (diffDays === 1) return 'Morgen';
+  if (diffDays < 0) return 'Sofort fällig';
+  
+  const dd = String(nextDate.getDate()).padStart(2, '0');
+  const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.`;
+}
+
+// Render debts cards
+function renderDebts() {
+  const grid = document.getElementById('debts-grid');
+  
+  if (debts.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #888;">
+        Keine Schuldner vorhanden. Lege unten einen an!
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = '';
+  debts.forEach(d => {
+    const card = document.createElement('div');
+    card.className = `debt-card ${d.is_active ? '' : 'inactive'}`;
+    
+    const statusText = d.is_active ? 'Aktiv' : 'Pausiert';
+    const badgeClass = d.is_active ? 'active' : 'paused';
+
+    const lastSentStr = d.last_reminder_at ? formatDate(d.last_reminder_at) : 'Noch nie';
+    const nextRemStr = d.is_active ? formatNextReminder(d.next_reminder_at) : 'Pausiert';
+
+    card.innerHTML = `
+      <div>
+        <div class="debt-header">
+          <div class="debt-user">
+            <span class="debt-avatar">👤</span>
+            <div class="debt-name-container">
+              <span class="debt-name">${d.name}</span>
+              <span class="debt-phone" style="text-transform: none; letter-spacing: normal;">${d.email}</span>
+            </div>
+          </div>
+          <span class="badge ${badgeClass}">${statusText}</span>
+        </div>
+        
+        <div class="debt-body">
+          <div class="debt-amount-row">
+            <span class="debt-amount-val">${formatCurrency(d.amount)}</span>
+            <span class="debt-reason-text">für ${d.reason}</span>
+          </div>
+          
+          <div class="debt-meta">
+            <div class="debt-meta-row">
+              <span>E-Mail-Rhythmus:</span>
+              <span>Alle ${d.frequency_days} Tag(e)</span>
+            </div>
+            <div class="debt-meta-row">
+              <span>Bisher gesendet:</span>
+              <span>${d.reminders_sent}</span>
+            </div>
+            <div class="debt-meta-row">
+              <span>Letzter Versand:</span>
+              <span>${lastSentStr}</span>
+            </div>
+            <div class="debt-meta-row">
+              <span>Nächster Check:</span>
+              <span style="${nextRemStr === 'Sofort fällig' ? 'color: var(--danger); font-weight: bold;' : ''}">${nextRemStr}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="debt-actions">
+        <button type="button" class="confirm-btn sms-now" onclick="triggerSendNow('${d.id}')" title="Triggert sofort eine E-Mail an diesen Kontakt">⚡ E-Mail Jetzt</button>
+        <button type="button" class="confirm-btn edit" onclick="startEditDebt('${d.id}')">✏️ Bearbeiten</button>
+        <button type="button" class="confirm-btn delete" onclick="handleDeleteDebt('${d.id}')">🗑️ Löschen</button>
+      </div>
+    `;
+    
+    grid.appendChild(card);
+  });
+}
+
+// Fetch logs
+async function fetchLogs(debtorId = 'all') {
+  const url = `${API_BASE}/reminder-logs?debt_id=${debtorId}`;
+  const res = await fetch(url);
+  reminderLogs = await res.json();
+  renderLogsTable();
+}
+
+function renderLogs(debtorId = 'all') {
+  fetchLogs(debtorId);
+}
+
+// Render logs table
+function renderLogsTable() {
+  const tbody = document.getElementById('logs-table-body');
+  
+  if (reminderLogs.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="empty-table-state" style="text-align: center; color: #888; padding: 20px;">Keine E-Mail-Logs vorhanden</td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  reminderLogs.forEach(l => {
+    const tr = document.createElement('tr');
+    
+    let statusIcon = '📝';
+    if (l.status === 'sent') statusIcon = '✅';
+    if (l.status === 'mocked') statusIcon = '⚙️';
+    if (l.status === 'failed') statusIcon = '❌';
+
+    const timestamp = new Date(l.sent_at).toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    tr.innerHTML = `
+      <td style="font-size: 0.85rem;">${timestamp}</td>
+      <td style="font-weight: 600;">${l.recipient_name}</td>
+      <td style="font-size: 0.85rem; color: var(--text-muted); text-transform: none;">${l.email}</td>
+      <td class="log-msg-cell" title="${l.message_body}">${l.message_body}</td>
+      <td>
+        <span class="badge status-${l.status}">${statusIcon} ${l.status.toUpperCase()}</span>
+      </td>
+    `;
+    
+    tbody.appendChild(tr);
+  });
+}
+
+// Submit a new debt or edit an existing one
+async function handleDebtSubmit(e) {
+  e.preventDefault();
+  
+  const id = document.getElementById('debt-id').value;
+  const name = document.getElementById('debt-name').value;
+  const email = document.getElementById('debt-email').value;
+  const amount = parseFloat(document.getElementById('debt-amount').value);
+  const reason = document.getElementById('debt-reason').value;
+  const frequency_days = parseInt(document.getElementById('debt-frequency').value, 10);
+  const is_active = document.getElementById('debt-active').checked;
+
+  const payload = { name, email, amount, reason, frequency_days, is_active };
+  
+  try {
+    let res;
+    if (id) {
+      res = await fetch(`${API_BASE}/debts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch(`${API_BASE}/debts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const data = await res.json();
+    if (res.ok) {
+      showToast(id ? 'Schuldner bearbeitet' : 'Schuldner hinzugefügt');
+      clearDebtForm();
+      await fetchDebts();
+      await fetchLogs('all');
+    } else {
+      showToast(data.error || 'Fehler beim Speichern', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Verbindungsfehler', 'error');
+  }
+}
+
+// Edit handler
+function startEditDebt(debtId) {
+  const d = debts.find(x => x.id === debtId);
+  if (!d) return;
+
+  document.getElementById('debt-form-title').textContent = '✏️ Schuldner bearbeiten';
+  document.getElementById('debt-id').value = d.id;
+  document.getElementById('debt-name').value = d.name;
+  document.getElementById('debt-email').value = d.email;
+  document.getElementById('debt-amount').value = d.amount;
+  document.getElementById('debt-reason').value = d.reason;
+  document.getElementById('debt-frequency').value = d.frequency_days;
+  document.getElementById('debt-active').checked = d.is_active;
+
+  document.getElementById('btn-debt-clear').style.display = 'inline-block';
+  document.getElementById('btn-debt-save').textContent = '💾 Aktualisieren';
+  
+  document.getElementById('debt-form-title').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Clear form and cancel edit
+function clearDebtForm() {
+  document.getElementById('debt-form-title').textContent = '✏️ Schuldner hinzufügen';
+  document.getElementById('debt-id').value = '';
+  document.getElementById('debt-name').value = '';
+  document.getElementById('debt-email').value = '';
+  document.getElementById('debt-amount').value = '';
+  document.getElementById('debt-reason').value = '';
+  document.getElementById('debt-frequency').value = '1';
+  document.getElementById('debt-active').checked = true;
+
+  document.getElementById('btn-debt-clear').style.display = 'none';
+  document.getElementById('btn-debt-save').textContent = '💾 Speichern';
+}
+
+// Trigger Manual Send Email immediately
+async function triggerSendNow(debtId) {
+  const d = debts.find(x => x.id === debtId);
+  if (!d) return;
+
+  try {
+    showToast(`Erinnerungs-E-Mail an ${d.name} wird gesendet...`);
+    const res = await fetch(`${API_BASE}/debts/${debtId}/send-now`, { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message || 'E-Mail erfolgreich gesendet / geloggt');
+      await fetchDebts();
+      
+      const filterSelect = document.getElementById('logs-filter-debtor');
+      filterSelect.value = 'all';
+      await fetchLogs('all');
+    } else {
+      showToast(data.error || 'Fehler beim Senden', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Fehler bei der Anfrage', 'error');
+  }
+}
+
+// Delete debtor handler
+async function handleDeleteDebt(debtId) {
+  const d = debts.find(x => x.id === debtId);
+  if (!d) return;
+
+  const title = document.querySelector('.confirm-title');
+  const text = document.querySelector('.confirm-text');
+  
+  const originalTitle = title.textContent;
+  const originalText = text.textContent;
+
+  title.textContent = 'Schuldner entfernen?';
+  text.textContent = `Möchtest du ${d.name} wirklich aus der Liste entfernen? Historische Logs bleiben erhalten.`;
+
+  const confirmed = await showConfirm();
+
+  title.textContent = originalTitle;
+  text.textContent = originalText;
+
+  if (confirmed) {
+    try {
+      const res = await fetch(`${API_BASE}/debts/${debtId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Schuldner erfolgreich entfernt');
+        clearDebtForm();
+        await fetchDebts();
+        await fetchLogs('all');
+      } else {
+        showToast(data.error || 'Fehler beim Löschen', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Verbindungsfehler', 'error');
+    }
+  }
+}
+
+// Expose handlers globally for onclick attributes
+window.triggerSendNow = triggerSendNow;
+window.startEditDebt = startEditDebt;
+window.handleDeleteDebt = handleDeleteDebt;
