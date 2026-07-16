@@ -165,7 +165,17 @@ async function initDB() {
     )
   `);
 
-  console.log('✅ Datenbank bereit (inklusive E-Mail-Erinnerungs-Tabellen)');
+  // Enable Row-Level Security on all tables to prevent public API access
+  // Our backend connects as postgres superuser, which bypasses RLS automatically
+  await pool.query(`
+    ALTER TABLE contestants ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE debts ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE reminder_logs ENABLE ROW LEVEL SECURITY;
+  `);
+
+  console.log('✅ Datenbank bereit (inklusive E-Mail-Erinnerungs-Tabellen, RLS aktiviert)');
 }
 
 app.use(cors());
